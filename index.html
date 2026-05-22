@@ -46,6 +46,20 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
     opacity: 0.4;
   }
 
+  /* 오버레이 글로벌 카운터 */
+  #overlay-global-count {
+    position: fixed; bottom: 100px; left: 50%;
+    transform: translateX(-50%);
+    font-family: 'Noto Sans KR', sans-serif;
+    font-size: 18px; color: rgba(255,255,255,0.5);
+    z-index: 1001; white-space: nowrap; text-align: center;
+    letter-spacing: 0.05em;
+    pointer-events: none;
+  }
+  #overlay-global-count strong {
+    color: #AC2121;
+  }
+
   /* 다이얼로그 */
   #overlay {
     position: fixed; inset: 0;
@@ -210,16 +224,16 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
   }
   #punch-overlay.show {
     opacity: 1;
-    animation: overlayDissolve 1s ease-out forwards;
+    animation: overlayDissolve 1.5s ease-in-out forwards;
   }
   @keyframes overlayDissolve {
-    0%   { opacity: 0.5; }
-    60%  { opacity: 0.5; }
+    0%   { opacity: 0.3; }
+    70%  { opacity: 0.3; }
     100% { opacity: 0; }
   }
   #punch-overlay-text {
     font-family: 'Black Han Sans', sans-serif;
-    font-size: clamp(36px, 7vw, 100px);
+    font-size: clamp(60px, 10vw, 120px);
     color: #ffffff;
     text-align: center;
     line-height: 1.25;
@@ -311,8 +325,22 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
     position: absolute; top: 24px; right: 28px;
     font-family: 'Black Han Sans', sans-serif;
     font-size: 20px; letter-spacing: 0.15em; color: #333; z-index: 100;
+    display: flex; align-items: center; gap: 4px;
   }
-  #kill-count span { color: #111; font-size: 20px; display: inline; }
+  #kill-count span { color: #AC2121; font-size: 20px; }
+
+  /* 글로벌 카운터 */
+  #global-count {
+    position: absolute; bottom: 28px; right: 28px;
+    font-family: 'Black Han Sans', sans-serif;
+    font-size: 13px; letter-spacing: 0.15em; color: #444;
+    z-index: 100; text-align: right; line-height: 1.6;
+    pointer-events: none;
+  }
+  #global-count span {
+    display: block;
+    font-size: 22px; color: #AC2121; letter-spacing: 0.1em;
+  }
 </style>
 </head>
 <body>
@@ -329,6 +357,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
     <input id="target-input" type="text" placeholder="대상을 입력하세요" maxlength="20" autocomplete="off"/>
     <button id="start-btn" onclick="startGame()">🦍 날린다</button>
   </div>
+  <div id="overlay-global-count">지금까지 고릴라가 총 <strong id="dialog-global-num">...</strong>번 펀치를 갈겼습니다.</div>
 </div>
 
 <!-- 메인 씬 -->
@@ -340,11 +369,58 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
     <div id="gorilla-wrap"></div>
     <button id="reset-btn" onclick="resetGame()">다시하기</button>
     <div id="kill-count">펀치 횟수<span id="count">0</span></div>
+    <div id="global-count">누적 펀치<span id="global-num">...</span></div>
     <div id="hint">고릴라를 당겨서 놓으세요 🦍</div>
   </div>
 </div>
 
 <script>
+  // ── Supabase 글로벌 카운터 ────────────────────────
+  const SB_URL = 'https://nyfemnpzduyhhdomzlmb.supabase.co';
+  const SB_KEY = 'sb_publishable_emn7UKNdgyr-yWKiSg86zQ_nQqtt35D';
+
+  async function fetchGlobalCount() {
+    try {
+      const res = await fetch(SB_URL + '/rest/v1/punch_counter?id=eq.1&select=count', {
+        headers: { 'apikey': SB_KEY, 'Authorization': 'Bearer ' + SB_KEY }
+      });
+      const data = await res.json();
+      if (data && data[0]) {
+        const n = data[0].count.toLocaleString();
+        document.getElementById('global-num').textContent = n;
+        const d = document.getElementById('dialog-global-num');
+        if (d) d.textContent = n;
+      }
+    } catch(e) { /* 조용히 실패 */ }
+  }
+
+  async function incrementGlobalCount() {
+    try {
+      // 현재값 읽기
+      const res = await fetch(SB_URL + '/rest/v1/punch_counter?id=eq.1&select=count', {
+        headers: { 'apikey': SB_KEY, 'Authorization': 'Bearer ' + SB_KEY }
+      });
+      const data = await res.json();
+      if (!data || !data[0]) return;
+      const next = data[0].count + 1;
+      // 업데이트
+      await fetch(SB_URL + '/rest/v1/punch_counter?id=eq.1', {
+        method: 'PATCH',
+        headers: {
+          'apikey': SB_KEY,
+          'Authorization': 'Bearer ' + SB_KEY,
+          'Content-Type': 'application/json',
+          'Prefer': 'return=minimal'
+        },
+        body: JSON.stringify({ count: next })
+      });
+      const nn = next.toLocaleString();
+      document.getElementById('global-num').textContent = nn;
+      const dd = document.getElementById('dialog-global-num');
+      if (dd) dd.textContent = nn;
+    } catch(e) { /* 조용히 실패 */ }
+  }
+
   // ── 상수 ──────────────────────────────────────────
   const GORILLA_HOME_X = 120;   // 홈 포지션 (px from left)
   const GORILLA_HOME_Y_RATIO = 0.75; // 화면 세로 비율
@@ -372,6 +448,9 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
   const overlayEl = document.getElementById('punch-overlay');
   const overlayTx = document.getElementById('punch-overlay-text');
 
+  // 최초 로드 시 글로벌 카운터 표시
+  fetchGlobalCount();
+
   // ── 다이얼로그 ───────────────────────────────────
   document.getElementById('target-input').addEventListener('keydown', e => {
     if (e.key === 'Enter') startGame();
@@ -391,6 +470,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
     document.getElementById('reset-btn').style.display = 'block';
     targetEl.textContent = val;
     initScene();
+    fetchGlobalCount();
   }
 
   function resetGame() {
@@ -506,27 +586,23 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
     void overlayEl.offsetWidth;
     overlayEl.classList.add('show');
 
-    setTimeout(() => {
-      // 오버레이 대기 중 다시하기를 눌렀으면 발사 취소
-      if (isResetting) { isResetting = false; return; }
+    if (isResetting) { isResetting = false; return; }
 
-      overlayEl.classList.remove('show');
-
-      isLaunched = true;
-      gorillaDeg = 0;
-      gorilla_passed = false;
-      whirlFrame = 0;
-      bounceCount = 0;
-      punchCount++;
-      document.getElementById('count').textContent = punchCount;
-      goWrap.classList.add('launched');
-    }, 1000);
+    isLaunched = true;
+    gorillaDeg = 0;
+    gorilla_passed = false;
+    whirlFrame = 0;
+    bounceCount = 0;
+    punchCount++;
+    document.getElementById('count').textContent = punchCount;
+    incrementGlobalCount();
+    goWrap.classList.add('launched');
   }
 
   // ── 메인 루프 ─────────────────────────────────────
   let whirlFrame = 0;
   let bounceCount = 0;
-  const MAX_BOUNCE = 5;
+  const MAX_BOUNCE = 12;
 
   function loop() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
