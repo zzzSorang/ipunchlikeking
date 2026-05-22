@@ -193,6 +193,41 @@
     pointer-events: none;
   }
 
+  /* 발사 전 텍스트 오버레이 */
+  #punch-overlay {
+    position: absolute; inset: 0;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    z-index: 200; pointer-events: none;
+    opacity: 0;
+  }
+  #punch-overlay.show {
+    opacity: 1;
+    animation: overlayDissolve 1s ease-out forwards;
+  }
+  @keyframes overlayDissolve {
+    0%   { opacity: 0.5; }
+    60%  { opacity: 0.5; }
+    100% { opacity: 0; }
+  }
+  #punch-overlay-text {
+    font-family: 'Black Han Sans', sans-serif;
+    font-size: clamp(36px, 7vw, 100px);
+    color: #ffffff;
+    text-align: center;
+    line-height: 1.25;
+    text-shadow: 0 2px 20px rgba(0,0,0,0.15);
+    animation: punchTextPop 0.4s cubic-bezier(0.34,1.56,0.64,1) both;
+  }
+  #punch-overlay-text .target-name {
+    display: block;
+    color: #ffffff;
+  }
+  @keyframes punchTextPop {
+    from { transform: scale(0.8); opacity: 0; }
+    to   { transform: scale(1);   opacity: 1; }
+  }
+
   /* 폭발 이펙트 SVG 래퍼 */
   .impact-shape {
     position: absolute;
@@ -290,6 +325,7 @@
   <div id="scene">
     <canvas id="sling-canvas"></canvas>
     <div id="target-zone"><div id="target-text"></div></div>
+    <div id="punch-overlay"><div id="punch-overlay-text"></div></div>
     <div id="gorilla-wrap"></div>
     <button id="reset-btn" onclick="resetGame()">다시하기</button>
     <div id="kill-count">펀치 횟수<span id="count">0</span></div>
@@ -321,6 +357,8 @@
   const goWrap   = document.getElementById('gorilla-wrap');
   const targetEl = document.getElementById('target-text');
   const targetZone = document.getElementById('target-zone');
+  const overlayEl = document.getElementById('punch-overlay');
+  const overlayTx = document.getElementById('punch-overlay-text');
 
   // ── 다이얼로그 ───────────────────────────────────
   document.getElementById('target-input').addEventListener('keydown', e => {
@@ -434,14 +472,25 @@
     const norm = dist || 1;
     launchVX = (-dx / norm) * LAUNCH_SPEED;
     launchVY = (-dy / norm) * LAUNCH_SPEED;
-    isLaunched = true;
-    gorillaDeg = 0;
-    gorilla_passed = false;
-    whirlFrame = 0;
-    bounceCount = 0;
-    punchCount++;
-    document.getElementById('count').textContent = punchCount;
-    goWrap.classList.add('launched');
+    // 3초 오버레이 표시 후 발사
+    const targetVal = targetEl.textContent;
+    overlayTx.innerHTML = `아이펀치라이크킹콩투<span class="target-name">${targetVal}</span>`;
+    overlayEl.classList.remove('show');
+    void overlayEl.offsetWidth;
+    overlayEl.classList.add('show');
+
+    setTimeout(() => {
+      overlayEl.classList.remove('show');
+
+      isLaunched = true;
+      gorillaDeg = 0;
+      gorilla_passed = false;
+      whirlFrame = 0;
+      bounceCount = 0;
+      punchCount++;
+      document.getElementById('count').textContent = punchCount;
+      goWrap.classList.add('launched');
+    }, 1000);
   }
 
   // ── 메인 루프 ─────────────────────────────────────
