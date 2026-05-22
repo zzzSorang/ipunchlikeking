@@ -355,6 +355,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
   let punchCount = 0;
   let homeX, homeY;
   let isDragging = false;
+  let isResetting = false;
   let dragX, dragY;
   let isLaunched = false;
   let launchVX, launchVY;
@@ -394,16 +395,31 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 
   function resetGame() {
     cancelAnimationFrame(rafId);
+    rafId = null;
+    isResetting = true;
+
+    // 이벤트 리스너 제거 (중복 등록 방지)
+    goWrap.removeEventListener('mousedown',  onDragStart);
+    goWrap.removeEventListener('touchstart', onDragStart);
+    window.removeEventListener('mousemove',  onDragMove);
+    window.removeEventListener('touchmove',  onDragMove);
+    window.removeEventListener('mouseup',    onDragEnd);
+    window.removeEventListener('touchend',   onDragEnd);
+
     document.getElementById('overlay').style.display = 'flex';
     document.getElementById('page-wrap').style.display = 'none';
     document.getElementById('scene').style.display = 'none';
     document.getElementById('target-input').value = '';
     document.getElementById('count').textContent = '0';
     punchCount = 0; isDragging = false; isLaunched = false;
+    gorilla_passed = false; whirlFrame = 0; bounceCount = 0;
+    goWrap.classList.remove('launched', 'dragging');
+    goWrap.style.transform = '';
   }
 
   // ── 씬 초기화 ─────────────────────────────────────
   function initScene() {
+    isResetting = false;
     resizeCanvas();
     window.addEventListener('resize', () => {
       resizeCanvas();
@@ -491,6 +507,9 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
     overlayEl.classList.add('show');
 
     setTimeout(() => {
+      // 오버레이 대기 중 다시하기를 눌렀으면 발사 취소
+      if (isResetting) { isResetting = false; return; }
+
       overlayEl.classList.remove('show');
 
       isLaunched = true;
