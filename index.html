@@ -396,28 +396,18 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 
   async function incrementGlobalCount() {
     try {
-      // 현재값 읽기
-      const res = await fetch(SB_URL + '/rest/v1/punch_counter?id=eq.1&select=count', {
-        headers: { 'apikey': SB_KEY, 'Authorization': 'Bearer ' + SB_KEY }
-      });
-      const data = await res.json();
-      if (!data || !data[0]) return;
-      const next = data[0].count + 1;
-      // 업데이트
-      await fetch(SB_URL + '/rest/v1/punch_counter?id=eq.1', {
-        method: 'PATCH',
+      // RPC 함수 호출 (DB에서 count+1만 허용, 직접 값 지정 불가)
+      await fetch(SB_URL + '/rest/v1/rpc/increment_punch', {
+        method: 'POST',
         headers: {
           'apikey': SB_KEY,
           'Authorization': 'Bearer ' + SB_KEY,
-          'Content-Type': 'application/json',
-          'Prefer': 'return=minimal'
+          'Content-Type': 'application/json'
         },
-        body: JSON.stringify({ count: next })
+        body: JSON.stringify({})
       });
-      const nn = next.toLocaleString();
-      document.getElementById('global-num').textContent = nn;
-      const dd = document.getElementById('dialog-global-num');
-      if (dd) dd.textContent = nn;
+      // 화면 갱신은 읽기로 따로
+      await fetchGlobalCount();
     } catch(e) { /* 조용히 실패 */ }
   }
 
