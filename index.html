@@ -59,6 +59,15 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
   #overlay-global-count strong {
     color: #AC2121;
   }
+  @media (max-width: 480px) {
+    #overlay-global-count {
+      white-space: normal;
+      font-size: 15px;
+      width: 90vw;
+      line-height: 1.6;
+    }
+    .ogc-break { display: block; }
+  }
 
   /* 다이얼로그 */
   #overlay {
@@ -154,7 +163,7 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
   #target-zone {
     position: absolute; top: 36%; left: 50%;
     transform: translate(-50%, -50%);
-    padding: 36px;
+    padding: 48px;
     z-index: 10;
     pointer-events: none;
     animation: float 3s ease-in-out infinite;
@@ -233,10 +242,11 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
   }
   #punch-overlay-text {
     font-family: 'Black Han Sans', sans-serif;
-    font-size: clamp(60px, 10vw, 120px);
+    font-size: clamp(28px, 9.5vw, 120px);
     color: #ffffff;
     text-align: center;
     line-height: 1.25;
+    white-space: nowrap;
     text-shadow: 0 2px 20px rgba(0,0,0,0.15);
     animation: punchTextPop 0.4s cubic-bezier(0.34,1.56,0.64,1) both;
   }
@@ -311,6 +321,62 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
     to { opacity: 0; transform: translate(var(--tx), var(--ty)) scale(0); }
   }
 
+  /* ── 온보딩 오버레이 ── */
+  #onboarding-overlay {
+    position: absolute; inset: 0;
+    background: rgba(0, 0, 0, 0.78);
+    backdrop-filter: blur(6px);
+    display: flex; align-items: center; justify-content: center;
+    z-index: 500;
+    animation: onboardingIn 0.45s cubic-bezier(0.34,1.56,0.64,1) both;
+  }
+  @keyframes onboardingIn {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+  }
+  #onboarding-box {
+    background: #1a1a1a;
+    border: 1px solid #333;
+    border-top: 3px solid #ffffff;
+    padding: 40px 36px 32px;
+    width: 400px; max-width: 88vw;
+    text-align: center;
+    animation: dialogIn 0.45s cubic-bezier(0.34,1.56,0.64,1) both;
+  }
+  #onboarding-icon {
+    font-size: 52px;
+    line-height: 1;
+    margin-bottom: 20px;
+    display: block;
+    animation: onboardingBounce 1.2s ease-in-out infinite;
+  }
+  @keyframes onboardingBounce {
+    0%,100% { transform: translateY(0); }
+    50%      { transform: translateY(-8px); }
+  }
+  #onboarding-box p {
+    font-family: 'Noto Sans KR', sans-serif;
+    font-size: 17px; font-weight: 400;
+    line-height: 1.7;
+    color: #f0ece4;
+    margin-bottom: 32px;
+    word-break: keep-all;
+  }
+  #onboarding-box p strong {
+    color: #ffffff;
+    font-weight: 700;
+  }
+  #onboarding-close {
+    width: 100%;
+    background: #ffffff; border: none; color: #000;
+    font-family: 'Black Han Sans', sans-serif;
+    font-size: 16px; letter-spacing: 0.12em; padding: 14px;
+    cursor: pointer; position: relative; overflow: hidden;
+    transition: background 0.2s, transform 0.1s;
+  }
+  #onboarding-close:hover { background: #AC2121; color: #fff; }
+  #onboarding-close:active { transform: scale(0.98); }
+
   #reset-btn {
     position: absolute; top: 24px; left: 28px;
     background: none; border: none; color: #333;
@@ -354,10 +420,10 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
   <div id="dialog">
     <div class="dialog-label">KING KONG PUNCH</div>
     <h2>어디로<br><span>킹콩 펀치</span>를<br>날리시겠어요?</h2>
-    <input id="target-input" type="text" placeholder="대상을 입력하세요" maxlength="20" autocomplete="off"/>
+    <input id="target-input" type="text" placeholder="대상을 입력하세요" maxlength="12" autocomplete="off"/>
     <button id="start-btn" onclick="startGame()">🦍 날린다</button>
   </div>
-  <div id="overlay-global-count">지금까지 고릴라가 총 <strong id="dialog-global-num">...</strong>번 펀치를 갈겼습니다.</div>
+  <div id="overlay-global-count">지금까지 고릴라가<span class="ogc-break"> </span>총 <strong id="dialog-global-num">...</strong>번 펀치를 갈겼습니다.</div>
 </div>
 
 <!-- 메인 씬 -->
@@ -369,7 +435,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
     <div id="gorilla-wrap"></div>
     <button id="reset-btn" onclick="resetGame()">다시하기</button>
     <div id="kill-count">펀치 횟수<span id="count">0</span></div>
-    <div id="global-count">누적 펀치<span id="global-num">...</span></div>
+    <div id="global-count">전세계 누적<br>펀치 횟수<span id="global-num">...</span></div>
     <div id="hint">고릴라를 당겨서 놓으세요 🦍</div>
   </div>
 </div>
@@ -461,6 +527,41 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
     targetEl.textContent = val;
     initScene();
     fetchGlobalCount();
+
+    // 첫 방문 온보딩
+    if (!localStorage.getItem('kkpk_visited')) {
+      showOnboarding();
+    }
+  }
+
+  function showOnboarding() {
+    const box = document.createElement('div');
+    box.id = 'onboarding-overlay';
+    box.innerHTML = `
+      <div id="onboarding-box">
+        <span id="onboarding-icon">🦍</span>
+        <p><strong>고릴라를 잡아 당겼다 놓으면,</strong><br>고릴라가 펀치를 날리러<br>슝 이동합니다!</p>
+        <button id="onboarding-close">얼른 날리고 싶어요! 🦍</button>
+      </div>`;
+    document.getElementById('scene').appendChild(box);
+
+    // 고릴라 드래그 임시 차단
+    goWrap.style.pointerEvents = 'none';
+
+    function closeOnboarding() {
+      box.style.transition = 'opacity 0.3s';
+      box.style.opacity = '0';
+      setTimeout(() => {
+        box.remove();
+        goWrap.style.pointerEvents = '';
+      }, 300);
+      localStorage.setItem('kkpk_visited', '1');
+    }
+
+    document.getElementById('onboarding-close').addEventListener('click', closeOnboarding);
+    box.addEventListener('click', e => {
+      if (e.target === box) closeOnboarding();
+    });
   }
 
   function resetGame() {
